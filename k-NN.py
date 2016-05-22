@@ -28,8 +28,6 @@ def homework(train_X, train_y, test_X):
                 dot_product[np.argmax(dot_product)] = 0
             pred.append(Counter(k_max).most_common(1)[0][0])
         return pred
-    
-    
     X_train, valid_X, y_train, valid_y = train_test_split(train_X, train_y, test_size=0.2)
     k_f1_list = []
     for k in range(1, 2):
@@ -38,7 +36,8 @@ def homework(train_X, train_y, test_X):
     k = np.argmax(k_f1_list)+1
     pred_y = k_nn(k, train_X, train_y, test_X)
     return pred_y
-print f1_score(test_y, homework(train_X, train_y, test_X), average='micro')
+#print f1_score(test_y, homework(train_X, train_y, test_X), average='micro')
+print test_y[0]
 
 #dot_product = np.dot(normalized_test_X, normalized_train_X.T)
 #del normalized_train_X
