@@ -12,12 +12,8 @@ mnist_X, mnist_y = shuffle(mnist.data, mnist.target.astype('int32'))
 mnist_X = mnist_X/255.0
 
 train_X, test_X, train_y, test_y = train_test_split(mnist_X, mnist_y, test_size=0.2)
-test_y = np.eye(test_y.max()+1)[test_y]
-train_y = np.eye(train_y.max()+1)[train_y]
 
 def homework(train_X, test_X, train_y):
-    EPOCH = 10
-    train_X, valid_X, train_y, valid_y = train_test_split(train_X, train_y, test_size=0.2)
     class Linear(object):
         def __init__(self, indim, outdim):
             self.W = np.random.normal(0, np.sqrt(1./indim), (indim, outdim))
@@ -62,6 +58,37 @@ def homework(train_X, test_X, train_y):
         def update(self, lr):
             pass
 
+    class Dropout(object):
+        train = True
+        def __init__(self, dropout_ratio):
+            self.dropout_ratio = dropout_ratio
+
+        def forward(self, x):
+            if not Dropout.train:
+                return x
+            scale = x.dtype.type(1./(1-self.dropout_ratio))
+            flag = np.random.rand(*x.shape) >= self.dropout_ratio
+            self.mask = scale*flag
+            return x*self.mask
+
+        def backward(self, delta):
+            if not Dropout.train:
+                return delta
+            return delta*self.mask
+
+        def update(self, lr):
+            pass
+
+    class Normalize(object):
+        def forward(self, x):
+            return x/np.linalg.norm(x)
+        def backward(self, delta):
+            return delta
+        def update(self, lr):
+            pass
+
+
+
     def relu(x):
         return np.where(x < 0, 0, x)
     def deriv_relu(x):
@@ -85,36 +112,48 @@ def homework(train_X, test_X, train_y):
         for layer in Layers:
             layer.update(lr)
 
-    Layers = [Linear(784, 256), Activation(relu, deriv_relu),
-            #  Linear(512, 256), Activation(relu, deriv_relu),
-            #  Linear(256, 128), Activation(relu, deriv_relu),
-            #  Linear(128, 64),  Activation(relu, deriv_relu),
-            #  Linear(64, 32),   Activation(relu, deriv_relu),
-              Linear(256, 10),   Activation(softmax, deriv_softmax)]
-
-    def train(X, t, lr=0.01):
+    def train(X, t, lr=0.025):
+        Dropout.train = True
         y = f_props(X, Layers)
         cost = np.sum(-t*np.log(y)-(1-t)*np.log(1-y))
         delta = y-t
         b_props(delta, Layers)
         updates(lr, Layers)
 
+        Dropout.train = False
         y = f_props(X, Layers)
         cost = np.sum(-t*np.log(y)-(1-t)*np.log(1-y))
         return cost, y
 
     def test(X, t):
+        Dropout.train = False
         y = f_props(X, Layers)
         cost = np.sum(-t*np.log(y)-(1-t)*np.log(1-y))
         return cost, y
 
+    EPOCH = 10
+    train_y = np.eye(train_y.max()+1)[train_y]
+    X_train, valid_X, y_train, valid_y = train_test_split(train_X, train_y, test_size=0.2)
+    Layers = [Linear(784, 512), Activation(relu, deriv_relu),
+              Linear(512, 256), Activation(relu, deriv_relu),
+              Linear(256, 128), Activation(relu, deriv_relu),
+              #Dropout(0.5),
+              Linear(128, 64),  Activation(relu, deriv_relu),
+              Linear(64, 32),   Activation(relu, deriv_relu),
+              Linear(32, 10),   Activation(softmax, deriv_softmax)]
+
+
     for epoch in xrange(EPOCH):
-        for x, y in zip(train_X, train_y):
+        for x, y in zip(X_train, y_train):
             cost = train(x[np.newaxis, :], y[np.newaxis, :])
         cost, pred_y = test(valid_X, valid_y)
         print "epoch:", epoch
         print "cost:",  cost
-        print "f1_score:", f1_score(valid_y, pred_y, average='micro')
+        print "f1_score:", f1_score(np.argmax(valid_y, axis=1), np.argmax(pred_y, axis=1), average='micro')
+    Dropout.train = False
+    y = f_props(test_X, Layers)
+    return np.argmax(y, axis=1)
+
 
 homework(train_X, test_X, train_y)
 
