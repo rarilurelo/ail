@@ -1,1 +1,6 @@
 .*.swp
+*.pdf
+.DS*
+train*
+*.tar
+cifar_10/*
